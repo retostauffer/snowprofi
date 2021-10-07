@@ -16,7 +16,7 @@
 #' \code{datetime} (POSIXct), \code{
 #'
 #' @examples
-#' x <- read_snow_data("data/datasascha.csv", as.POSIXct("2021-10-03"))
+#' x <- read_snowdata("data/datasascha.csv", as.POSIXct("2021-10-03"), value.na = 0)
 #'
 #' @export
 #' @author Reto
@@ -49,7 +49,7 @@ read_snowdata <- function(file, start, value.na = NULL) {
 
     # Replace "0" in x$value if existing
     if (!is.null(value.na)) {
-        stopifnot(class(value.na) == class(x$value0))
+        stopifnot(class(value.na) == class(x$value))
         warning(sprintf("Replacing %s in value (Z) with missing values.", paste(value.na, collapse = ", ")))
         x <- transform(x, value = ifelse(value %in% value.na, NA, value))
     }

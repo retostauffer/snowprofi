@@ -1,22 +1,22 @@
 
-#' Convert Snowdata to an sf Object
+#' Convert Snowdata to Polygonformat
 #'
-#' This is the main function of the package. Taking some pre-prepared
-#' \code{zoo} object returned by \code[snowprofi]{snowdata_to_zoo}
-#' to create a bunch of polygons for each of the segments needed for
-#' plotting.
+#' Takes the object returned by \code[snowprofi]{snowdata_to_zoo}
+#' and prepares a data.frame which can be used with \code[ggplot2]{geom_poly}.
+#' The way it works is that you need a grouping identifier, and multiple (four)
+#' points. The rest is then taken over by ggplot2.
 #'
 #' @param x object returned by \code[snowprofi]{snowdata_to_zoo} or
 #'        \code[snowprofi]{snowdata_clean}. 
 #'
-#' @return An sf object with polygon geometries and
-#' \code{level} and \code{value} as variables for plotting.
+#' @return An data.frame prepared to be used with \code[ggplot2]{geom_poly}.
 #'
 #' @export
 #' @importFrom zoo is.zoo index
-#' @importFrom sf st_sf st_polygon st_sfc
 #' @author Reto
-snowdata_to_sf <- function(x) {
+snowdata_to_poly <- function(x) {
+
+    t_start <- Sys.time() # for measuring time elapsed ...
 
     # Sanity check
     stopifnot(zoo::is.zoo(x))
@@ -91,6 +91,9 @@ snowdata_to_sf <- function(x) {
         # height DIFFERENCE changes for the specific level. Looping over l
         for (l in seq_along(levs)) {
 
+            # Data point missing? We still proceed as we would like to have
+            # the missing values v2[l] in there (will be drawn with missing color).
+
             # Extracting lo (lower level) and hi (higher level)
             # for both, the previous step (i - 1) and the current step (i).
             # Previous step is h1, current step h2.
@@ -103,17 +106,20 @@ snowdata_to_sf <- function(x) {
             if ((hi_h1 - lo_h1 + hi_h2 - lo_h2) == 0) next
 
             # Else let us create the poly
-            #cat(sprintf(" Heights for i-1: %10.3f %10.3f     Heights for i: %10.3f %10.3f\n", lo_h1, hi_h1, lo_h2, hi_h2))
-            lo_time <- as.numeric(zoo::index(height)[i - 1])
-            hi_time <- as.numeric(zoo::index(height)[i])
+            lo_time <- zoo::index(height)[i - 1]
+            hi_time <- zoo::index(height)[i]
 
             # Make the polygon now
-            p <- sf::st_polygon(list(matrix(c(lo_time, lo_time, hi_time, hi_time, lo_time,
-                                              lo_h1,   hi_h1,   hi_h2,   lo_h2,   lo_h1),   ncol = 2)))
-
+            tmp <- data.frame(grp       = length(res),
+                              timestamp = c(lo_time, lo_time, hi_time, hi_time),
+                              height    = c(lo_h1, hi_h1, hi_h2, lo_h2),
+                              #timestamp = c(lo_time, lo_time, hi_time, hi_time, lo_time),
+                              #height    = c(lo_h1, hi_h1, hi_h2, lo_h2, lo_h2),
+                              level     = levs[l],
+                              value     = v2[l])
             # Appending result to list. geomtry is the polygon, and add current level and value
             # which is the value of the CURRENT time (i) and the current level.
-            res[[length(res) + 1]] <- list(geometry = sf::st_sfc(p), level = levs[l], value = v2[l])
+            res[[length(res) + 1]] <- tmp
         }
     }
     close(pb)
@@ -125,27 +131,14 @@ snowdata_to_sf <- function(x) {
     # Combine the list to a proper data.frame, which we then immediately
     # convert to an sf object. Autoamtically detects and uses the 'geometry'
     # variable as sf geometry.
-    cat("Generation of geometries finished, combine everything ...\n")
-    x <- dplyr::bind_rows(res)
-    cat("Convert to sf ...\n")
-    x <- sf::st_sf(x)
+    x <- do.call(rbind, res)
+
+    t_diff <- as.numeric(Sys.time() - t_start)
+    cat(sprintf("The entire preparation of the polygons took %.1f %s\n",
+                ifelse(t_diff < 60, t_diff, t_diff / 60),
+                ifelse(t_diff < 60, "seconds", "minutes")))
 
     return(x)
 }
 
 
-
-#plot(st_geometry(k), asp = 0)
-#plot(k[, "value"], asp = 0)
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
