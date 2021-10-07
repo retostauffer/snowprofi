@@ -134,9 +134,11 @@ snowdata_to_poly <- function(x) {
     x <- do.call(rbind, res)
 
     t_diff <- as.numeric(Sys.time() - t_start)
-    cat(sprintf("The entire preparation of the polygons took %.1f %s\n",
-                ifelse(t_diff < 60, t_diff, t_diff / 60),
-                ifelse(t_diff < 60, "seconds", "minutes")))
+    if (t_diff < 60) {
+        cat(sprintf("The entire preparation of the polygons took %.1f secs\n", t_diff))
+    } else {
+        cat(sprintf("The entire preparation of the polygons took %.1f mins\n", t_diff / 60))
+    }
 
     return(x)
 }
