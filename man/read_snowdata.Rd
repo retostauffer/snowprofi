@@ -25,7 +25,7 @@ things. I also assume a 'date' and use your time
 information on X as 'hours after initialization'.
 }
 \examples{
-x <- read_snow_data("data/datasascha.csv", as.POSIXct("2021-10-03"))
+x <- read_snowdata("data/datasascha.csv", as.POSIXct("2021-10-03"), value.na = 0)
 
 }
 \author{
