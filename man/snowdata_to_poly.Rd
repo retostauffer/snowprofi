@@ -7,18 +7,22 @@
 snowdata_to_poly(x, baseheight = 0)
 }
 \arguments{
-\item{x}{object returned by \code[snowprofi]{snowdata_read_wfj}}
+\item{x}{object returned by \code{\link{snowdata_read_wfj}}}
 
 \item{baseheight}{numeric, single value. Typically 0 (ground height),
 used to construct the polygon for the first layer.}
 }
 \value{
-An data.frame prepared to be used with \code[ggplot2]{geom_poly}.
+An data.frame prepared to be used with
+\code{\link[ggplot2]{geom_poly}}.
 }
 \description{
-Input is the object as returned by \code[snowprofi]{snowpack_read_wfj}.
+Input is the object as returned by \code{\link{snowpack_read_wfj}}.
 We will, internally, ensure that we got what we expected, a zoo object
 with some specific columns needed to generate the polygons.
+}
+\seealso{
+\link[snowprofi]{snowpack_read_wfj}
 }
 \author{
 Reto

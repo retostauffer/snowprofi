@@ -1,14 +1,13 @@
 Package: snowprofi
 Type: Package
 Title: Plotting Snow Profiles
-Version: 0.1-0
+Version: 0.1-1
 Date: 2021-10-08
 Authors@R: c(person(given = "Reto",   family = "Stauffer", role = c("aut", "cre"), email = "Reto.Stauffer@uibk.ac.at"),
              person(given = "Sascha", family = "Bellaire", role = "aut",           email = "Sascha.Bellaire@gmail.com"))
 Description: Small toolbox to plot snow profiles.
 Depends: R (>= 4.0.0)
-Imports: zoo, sf, tidyr, dplyr, ggplot2
-Suggests: tinytest
+Imports: zoo
 License: GPL-2
 RoxygenNote: 7.1.1
 Config/testthat/edition: 3

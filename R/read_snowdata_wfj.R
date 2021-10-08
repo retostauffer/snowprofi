@@ -11,9 +11,9 @@
 #' @details
 #' The columns \code{DZ_SNOW_M} contain the individual heights
 #' of all snow layers. We modify the data set calculating the
-#' top height of each layer by using \code{cumsum}. In addition
-#' the data set contains \code{H_SNOW} which is the total height
-#' of the snow pack.
+#' top height of each layer by using \code{\link[base]{cumsum}}.
+#' In addition the data set contains \code{H_SNOW} which is the total height of
+#' the snow pack.
 #'
 #' We can then check the height above ground of the last snow
 #' layer against \code{H_SNOW} which should be the same. Due to
@@ -26,9 +26,14 @@
 #' @return Returns a data.frame with with three variables named
 #'
 #' @examples
-#' x <- read_snowdata_wfj("data/202_snow_output_wfj.txt")
+#' \dontrun{
+#'    x <- read_snowdata_wfj("data/202_snow_output_wfj.txt")
+#' }
+#'
+#' @seealso \link[snowprofi]{snowpack_to_poly}
 #'
 #' @importFrom zoo zoo is.regular
+#' @importFrom utils read.table
 #' @export
 #' @author Reto
 read_snowdata_wfj <- function(file, htol = 0.001) {

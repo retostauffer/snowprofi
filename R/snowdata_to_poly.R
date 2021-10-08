@@ -1,18 +1,23 @@
 
 #' Convert Snowdata to Polygonformat
 #'
-#' Input is the object as returned by \code[snowprofi]{snowpack_read_wfj}.
+#' Input is the object as returned by \code{\link{snowpack_read_wfj}}.
 #' We will, internally, ensure that we got what we expected, a zoo object
 #' with some specific columns needed to generate the polygons.
 #'
-#' @param x object returned by \code[snowprofi]{snowdata_read_wfj}
+#' @param x object returned by \code{\link{snowdata_read_wfj}}
 #' @param baseheight numeric, single value. Typically 0 (ground height),
 #'        used to construct the polygon for the first layer.
 #'
-#' @return An data.frame prepared to be used with \code[ggplot2]{geom_poly}.
+#' @return An data.frame prepared to be used with
+#' \code{\link[ggplot2]{geom_poly}}.
+#'
+#' @seealso \link[snowprofi]{snowpack_read_wfj}
 #'
 #' @export
 #' @importFrom zoo is.zoo index
+#' @importFrom stats na.omit
+#' @importFrom utils txtProgressBar setTxtProgressBar
 #' @author Reto
 snowdata_to_poly <- function(x, baseheight = 0) {
 
