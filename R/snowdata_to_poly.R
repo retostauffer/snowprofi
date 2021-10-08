@@ -8,8 +8,6 @@
 #' @param x object returned by \code{\link{snowdata_read_wfj}}
 #' @param baseheight numeric, single value. Typically 0 (ground height),
 #'        used to construct the polygon for the first layer.
-#' @param cores number of cores to be used for parallelization.
-#'        Default is maximum minus 1.
 #'
 #' @return An data.frame prepared to be used with
 #' \code{\link[ggplot2]{geom_poly}}.
@@ -21,13 +19,11 @@
 #' @importFrom stats na.omit
 #' @importFrom dplyr bind_rows
 #' @importFrom utils txtProgressBar setTxtProgressBar
-#' @import parallel
 #' @author Reto
-snowdata_to_poly <- function(x, baseheight = 0, cores = parallel::detectCores() - 1) {
+snowdata_to_poly <- function(x, baseheight = 0) {
 
     stopifnot(zoo::is.zoo(x))
     stopifnot(is.numeric(baseheight), length(baseheight) == 1)
-    stopifnot(is.numeric(cores), length(cores) == 1L, cores > 0)
 
     # Measure execution time ...
     t_start <- Sys.time()
@@ -78,12 +74,7 @@ snowdata_to_poly <- function(x, baseheight = 0, cores = parallel::detectCores() 
 
 
     # Setting up a cluster to parallelize this process
-    cluster <- parallel::makeCluster(cores)
-    parallel::clusterExport(cluster,
-                            varlist = c("x", "baseheight", "all_base", "nlev_snow", "cols_height", "cols_snow_vars"),
-                            envir   = environment())
-    res <- parallel::parLapply(cluster, seq_len(nrow(x)), snowdata_create_one_poly)
-    parallel::stopCluster(cluster)
+    res <- lapply(seq_len(nrow(x)), snowdata_create_one_poly, envir = environment())
 
     # Combine the list to a proper data.frame, which we then immediately
     # convert to an sf object. Autoamtically detects and uses the 'geometry'
@@ -108,7 +99,9 @@ snowdata_to_poly <- function(x, baseheight = 0, cores = parallel::detectCores() 
 #'
 #' @importFrom zoo index
 #' @author Reto
-snowdata_create_one_poly <- function(i) {
+snowdata_create_one_poly <- function(i, envir) {
+
+    attach(envir, warn.conflicts = FALSE)
 
     # Now we need to create a function which
     # Loops from i = 2:nrow(height)
