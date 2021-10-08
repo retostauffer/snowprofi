@@ -171,7 +171,8 @@ snowdata_create_one_poly <- function(i) {
         # more information: the level (integer; level count) as well as 
         # the values of the variables we identified to be connected
         # to snow layers. This information is stored in cols_snow_vars.
-        tmp <- data.frame(grp       = length(res),
+        tmp <- data.frame(grp       = (i - 2) * nlev_snow + l - 1,
+                          ##order     = 1:4,
                           timestamp = c(lo_time, lo_time, hi_time, hi_time),
                           height    = c(lo_h1, hi_h1, hi_h2, lo_h2),
                           level     = l)

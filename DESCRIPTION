@@ -7,7 +7,7 @@ Authors@R: c(person(given = "Reto",   family = "Stauffer", role = c("aut", "cre"
              person(given = "Sascha", family = "Bellaire", role = "aut",           email = "Sascha.Bellaire@gmail.com"))
 Description: Small toolbox to plot snow profiles.
 Depends: R (>= 4.0.0)
-Imports: zoo, dplyr
+Imports: zoo, dplyr, parallels
 License: GPL-2
 RoxygenNote: 7.1.1
 Config/testthat/edition: 3
