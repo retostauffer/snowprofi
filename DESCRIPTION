@@ -1,7 +1,7 @@
 Package: snowprofi
 Type: Package
 Title: Plotting Snow Profiles
-Version: 0.1-1
+Version: 0.1-3
 Date: 2021-10-08
 Authors@R: c(person(given = "Reto",   family = "Stauffer", role = c("aut", "cre"), email = "Reto.Stauffer@uibk.ac.at"),
              person(given = "Sascha", family = "Bellaire", role = "aut",           email = "Sascha.Bellaire@gmail.com"))
