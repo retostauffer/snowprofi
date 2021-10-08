@@ -4,20 +4,21 @@
 \alias{snowdata_to_poly}
 \title{Convert Snowdata to Polygonformat}
 \usage{
-snowdata_to_poly(x)
+snowdata_to_poly(x, baseheight = 0)
 }
 \arguments{
-\item{x}{object returned by \code[snowprofi]{snowdata_to_zoo} or
-\code[snowprofi]{snowdata_clean}.}
+\item{x}{object returned by \code[snowprofi]{snowdata_read_wfj}}
+
+\item{baseheight}{numeric, single value. Typically 0 (ground height),
+used to construct the polygon for the first layer.}
 }
 \value{
 An data.frame prepared to be used with \code[ggplot2]{geom_poly}.
 }
 \description{
-Takes the object returned by \code[snowprofi]{snowdata_to_zoo}
-and prepares a data.frame which can be used with \code[ggplot2]{geom_poly}.
-The way it works is that you need a grouping identifier, and multiple (four)
-points. The rest is then taken over by ggplot2.
+Input is the object as returned by \code[snowprofi]{snowpack_read_wfj}.
+We will, internally, ensure that we got what we expected, a zoo object
+with some specific columns needed to generate the polygons.
 }
 \author{
 Reto
