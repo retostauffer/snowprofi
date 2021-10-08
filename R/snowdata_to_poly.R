@@ -8,6 +8,8 @@
 #' @param x object returned by \code{\link{snowdata_read_wfj}}
 #' @param baseheight numeric, single value. Typically 0 (ground height),
 #'        used to construct the polygon for the first layer.
+#' @param cores number of cores to be used for parallelization.
+#'        Default is maximum minus 1.
 #'
 #' @return An data.frame prepared to be used with
 #' \code{\link[ggplot2]{geom_poly}}.
@@ -17,12 +19,15 @@
 #' @export
 #' @importFrom zoo is.zoo index
 #' @importFrom stats na.omit
+#' @importFrom dplyr bind_rows
 #' @importFrom utils txtProgressBar setTxtProgressBar
+#' @import parallel
 #' @author Reto
-snowdata_to_poly <- function(x, baseheight = 0) {
+snowdata_to_poly <- function(x, baseheight = 0, cores = parallel::detectCores() - 1) {
 
     stopifnot(zoo::is.zoo(x))
     stopifnot(is.numeric(baseheight), length(baseheight) == 1)
+    stopifnot(is.numeric(cores), length(cores) == 1L, cores > 0)
 
     # Measure execution time ...
     t_start <- Sys.time()
@@ -64,6 +69,47 @@ snowdata_to_poly <- function(x, baseheight = 0) {
         cols_snow_vars[[n]] <- get_colnames(sprintf("^%s_[0-9]+$", n), names(x))
     }
 
+    # Helper function used below; checks if all values are either NA or baseheight.
+    all_base <- function(x, baseheight) {
+        x <- na.omit(x)
+        if (length(x) == 0) return(TRUE)
+        return(isTRUE(all.equal(x, rep(baseheight, length(x)))))
+    }
+
+
+    # Setting up a cluster to parallelize this process
+    cluster <- parallel::makeCluster(cores)
+    parallel::clusterExport(cluster,
+                            varlist = c("x", "baseheight", "all_base", "nlev_snow", "cols_height", "cols_snow_vars"),
+                            envir   = environment())
+    res <- parallel::parLapply(cluster, seq_len(nrow(x)), snowdata_create_one_poly)
+    parallel::stopCluster(cluster)
+
+    # Combine the list to a proper data.frame, which we then immediately
+    # convert to an sf object. Autoamtically detects and uses the 'geometry'
+    # variable as sf geometry.
+    ####x <- do.call(rbind, res)
+    x <- dplyr::bind_rows(res) # Faster
+
+    t_diff <- Sys.time() - t_start
+    cat(sprintf("The entire preparation of the polygons took %.1f %s\n",
+                as.numeric(t_diff, units = units(t_diff)), units(t_diff)))
+
+    return(x)
+}
+
+
+#' Create single polygon
+#'
+#' Used within \code{\link{snowdata_to_poly}}. Should not be used
+#' directly.
+#'
+#' @param i integer, row-index.
+#'
+#' @importFrom zoo index
+#' @author Reto
+snowdata_create_one_poly <- function(i) {
+
     # Now we need to create a function which
     # Loops from i = 2:nrow(height)
     # In each iteration we will build up polygons 
@@ -87,87 +133,54 @@ snowdata_to_poly <- function(x, baseheight = 0) {
     # the highest level name (last in 'levs'); most to the right in the
     # data set.
 
+    # Extracting heights
+    h1 <- as.vector(x[i - 1, cols_height])
+    h2 <- as.vector(x[i,     cols_height])
+
+    # Check if all values in both vectors are either NA or baseheight.
+    # If so, we don't have to process them and skip this iteration.
+    if (all_base(h1, baseheight) & all_base(h2, baseheight)) return(NULL)
+
+    # We found some useful data. Now let us try to find out which of the
+    # levels is worth a polygon (not area 0). This is the case if the
+    # height DIFFERENCE changes for the specific level. Looping over l
     res <- list()
+    for (l in seq_len(nlev_snow)) {
 
-    # Helper function used below; checks if all values are either NA or baseheight.
-    all_base <- function(x, baseheight) {
-        x <- na.omit(x)
-        if (length(x) == 0) return(TRUE)
-        return(isTRUE(all.equal(x, rep(baseheight, length(x)))))
+        # Extracting lo (lower level) and hi (higher level)
+        # for both, the previous step (i - 1) and the current step (i).
+        # Previous step is h1, current step h2.
+        lo_h1 <- ifelse(l == 1, baseheight, h1[l - 1]);        hi_h1 = h1[l]
+        lo_h2 <- ifelse(l == 1, baseheight, h2[l - 1]);        hi_h2 = h2[l]
+
+        ###DEV###cat("Heights lo: %.3f %.3f, Heights hi %.3f %.3f\n", lo_h1, lo_h2, hi_h1, hi_h2)
+
+        # Missing values in one of the heights? Skip as we cannot make a proper polygon.
+        if (any(is.na(c(lo_h1, hi_h1, lo_h2, hi_h2)))) next
+
+        # No change? This layer has a volume of 0, skip creating a polygon!
+        if ((hi_h1 - lo_h1 + hi_h2 - lo_h2) == 0) next
+
+        # Else let us create the poly
+        lo_time <- zoo::index(x)[i - 1]
+        hi_time <- zoo::index(x)[i]
+
+        # Make the polygon now. 'grp' is an auto increment, each integer
+        # defines one polygon (used later for ggplot2). 'timestamp' and 'height'
+        # later make up the coordinates for the polygons. In addition we some
+        # more information: the level (integer; level count) as well as 
+        # the values of the variables we identified to be connected
+        # to snow layers. This information is stored in cols_snow_vars.
+        tmp <- data.frame(grp       = length(res),
+                          timestamp = c(lo_time, lo_time, hi_time, hi_time),
+                          height    = c(lo_h1, hi_h1, hi_h2, lo_h2),
+                          level     = l)
+
+        for (n in names(cols_snow_vars)) tmp[[n]] <- x[i, cols_snow_vars[[n]][l]]
+
+        # Appending result to list. geomtry is the polygon, and add current level and value
+        # which is the value of the CURRENT time (i) and the current level.
+        res[[length(res) + 1]] <- tmp
     }
-
-    # Progress bar ...
-    pb <- txtProgressBar(0, nrow(x), style = 3)
-
-    for (i in 2:nrow(x)) {
-
-        setTxtProgressBar(pb, i)
-
-        # Extracting heights
-        h1 <- as.vector(x[i - 1, cols_height])
-        h2 <- as.vector(x[i,     cols_height])
-
-        # Check if all values in both vectors are either NA or baseheight.
-        # If so, we don't have to process them and skip this iteration.
-        if (all_base(h1, baseheight) & all_base(h2, baseheight)) next
-
-        # We found some useful data. Now let us try to find out which of the
-        # levels is worth a polygon (not area 0). This is the case if the
-        # height DIFFERENCE changes for the specific level. Looping over l
-        for (l in seq_len(nlev_snow)) {
-
-            # Extracting lo (lower level) and hi (higher level)
-            # for both, the previous step (i - 1) and the current step (i).
-            # Previous step is h1, current step h2.
-            lo_h1 <- ifelse(l == 1, baseheight, h1[l - 1]);        hi_h1 = h1[l]
-            lo_h2 <- ifelse(l == 1, baseheight, h2[l - 1]);        hi_h2 = h2[l]
-
-            ###DEV###cat("Heights lo: %.3f %.3f, Heights hi %.3f %.3f\n", lo_h1, lo_h2, hi_h1, hi_h2)
-
-            # Missing values in one of the heights? Skip as we cannot make a proper polygon.
-            if (any(is.na(c(lo_h1, hi_h1, lo_h2, hi_h2)))) next
-
-            # No change? This layer has a volume of 0, skip creating a polygon!
-            if ((hi_h1 - lo_h1 + hi_h2 - lo_h2) == 0) next
-
-            # Else let us create the poly
-            lo_time <- zoo::index(x)[i - 1]
-            hi_time <- zoo::index(x)[i]
-
-            # Make the polygon now. 'grp' is an auto increment, each integer
-            # defines one polygon (used later for ggplot2). 'timestamp' and 'height'
-            # later make up the coordinates for the polygons. In addition we some
-            # more information: the level (integer; level count) as well as 
-            # the values of the variables we identified to be connected
-            # to snow layers. This information is stored in cols_snow_vars.
-            tmp <- data.frame(grp       = length(res),
-                              timestamp = c(lo_time, lo_time, hi_time, hi_time),
-                              height    = c(lo_h1, hi_h1, hi_h2, lo_h2),
-                              level     = l)
-
-            for (n in names(cols_snow_vars)) tmp[[n]] <- x[i, cols_snow_vars[[n]][l]]
-
-            # Appending result to list. geomtry is the polygon, and add current level and value
-            # which is the value of the CURRENT time (i) and the current level.
-            res[[length(res) + 1]] <- tmp
-        }
-    }
-    close(pb)
-
-    if (length(res) == 0) {
-        stop("Have not found ANY valid cell to create a polygon!")
-    }
-
-    # Combine the list to a proper data.frame, which we then immediately
-    # convert to an sf object. Autoamtically detects and uses the 'geometry'
-    # variable as sf geometry.
-    x <- do.call(rbind, res)
-
-    t_diff <- Sys.time() - t_start
-    cat(sprintf("The entire preparation of the polygons took %.1f %s\n",
-                as.numeric(t_diff, units = units(t_diff)), units(t_diff)))
-
-    return(x)
+    return(res)
 }
-
-

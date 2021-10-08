@@ -4,13 +4,16 @@
 \alias{snowdata_to_poly}
 \title{Convert Snowdata to Polygonformat}
 \usage{
-snowdata_to_poly(x, baseheight = 0)
+snowdata_to_poly(x, baseheight = 0, cores = parallel::detectCores() - 1)
 }
 \arguments{
 \item{x}{object returned by \code{\link{snowdata_read_wfj}}}
 
 \item{baseheight}{numeric, single value. Typically 0 (ground height),
 used to construct the polygon for the first layer.}
+
+\item{cores}{number of cores to be used for parallelization.
+Default is maximum minus 1.}
 }
 \value{
 An data.frame prepared to be used with

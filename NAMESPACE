@@ -2,6 +2,8 @@
 
 export(read_snowdata_wfj)
 export(snowdata_to_poly)
+import(parallel)
+importFrom(dplyr,bind_rows)
 importFrom(stats,na.omit)
 importFrom(utils,read.table)
 importFrom(utils,setTxtProgressBar)
